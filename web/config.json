@@ -1,0 +1,35 @@
+{
+    "hardwareConfiguration": {
+        "cpu": {
+            "enabled": true,
+            "optimizationMethod": "Auto",
+            "threadCount": 4
+        },
+        "nvidia": {
+            "devices": [
+                {
+                    "desktopLag": 50.0,
+                    "enabled": false,
+                    "id": 0,
+                    "intensity": 50.0,
+                    "name": ""
+                }
+            ]
+        }
+    },
+    "pools": [
+        {
+            "agent": "violetminer",
+            "algorithm": "chukwa",
+            "disableAutoAlgoSelect": false,
+            "host": "us-central.2acoin.org",
+            "niceHash": false,
+            "password": "x",
+            "port": 3333,
+            "priority": 5,
+            "rigID": "worker01",
+            "ssl": false,
+            "username": "guns95PQ9tH96Lympn1bw1AQDCNg1AEXHHRjuKJh1TNnAQSpZcSzJvfA4mgmfQ8Cyq96RLKthdBXn96TXi6g3yFzHm73aXw5Kk6EaQmTq4eew7XMWZgrqE1KcDik8fQU5EhhauijLA9MGCiLH2gxjww4DuQJ2ErN1GMhkct7giSyVPwS4iCQdCtHf1"
+        }
+    ]
+}
