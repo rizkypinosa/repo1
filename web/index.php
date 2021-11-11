@@ -1,220 +1,176 @@
-<?php
-error_reporting(0);
-function Indodax($key, $secretKey, $data)
-{
-    $url = 'https://indodax.com/tapi';
-
-    $post_data = http_build_query($data, '', '&');
-    $sign = hash_hmac('sha512', $post_data, $secretKey);
-
-    $headers = ['Key:' . $key, 'Sign:' . $sign];
-
-    $curl = curl_init();
-
-    curl_setopt_array($curl, array(
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_URL => $url,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $data,
-        CURLOPT_RETURNTRANSFER => true
-    ));
-
-    $response = curl_exec($curl);
-    curl_close($curl);
-    return json_decode($response, true);
-}
-
-function get_rate($id)
-{
-
-    $curl = curl_init();
-
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://indodax.com/api/ticker/' . $id,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-    ));
-
-    $response = curl_exec($curl);
-
-    curl_close($curl);
-    return json_decode($response, true);
-}
-function get_string_between($string, $start, $end)
-{
-    $string = ' ' . $string;
-    $ini = strpos($string, $start);
-    if ($ini == 0) return '';
-    $ini += strlen($start);
-    $len = strpos($string, $end, $ini) - $ini;
-    return substr($string, $ini, $len);
-}
-
-// Please find Key from trade API Indodax exchange
-$key = "";
-// Please find Secret Key from trade API Indodax exchange
-$secretKey = "";
-$data = [
-    'method' => 'getInfo',
-    'timestamp' => '1578304294000',
-    'recvWindow' => '1578303937000'
-];
-$idx = Indodax($key, $secretKey, $data);
-$saldo = number_format($idx['return']['balance']['idr'], 0, ',', '.');
-echo "Halo, {$idx['return']['name']}. Selamat datang di BOT Indodax\n";
-echo "Saldo IDR {$saldo}\n";
-echo "Masukan coin trade hari ini : ";
-$coin = strtolower(trim(fgets(STDIN)));
-$rate_now = get_rate($coin . "idr");
-if ($rate_now['ticker']) {
-    echo "HARI INI " . strtoupper($coin) . " - IDR\n";
-    $high = number_format($rate_now['ticker']['high'], 0, ',', '.');
-    $low = number_format($rate_now['ticker']['low'], 0, ',', '.');
-    $last = number_format($rate_now['ticker']['last'], 0, ',', '.');
-    echo "HIGH : Rp.{$high} || LOW : Rp.{$low} || LAST : Rp.{$last}\n";
-    echo "Masukan Nominal Trade : ";
-    $dipakai = (int)trim(fgets(STDIN));
-    echo "Presentase Profit (ex 0.75) : ";
-    $win = trim(fgets(STDIN));
-    echo "Presentase Lose (ex 0.75) : ";
-    $lose = trim(fgets(STDIN));
-    $c0rz = get_rate($coin . "idr");
-    $last_price_bgt = $c0rz['ticker']['last'];
-    $data = [
-        'method' => 'trade',
-        'timestamp' => '1578304294000',
-        'recvWindow' => '1578303937000',
-        'pair' => $coin . '_idr',
-        'type' => 'buy',
-        'price' => $last_price_bgt,
-        'idr' => (int)$dipakai,
-        'btc' => '',
-    ];
-    $buy = Indodax($key, $secretKey, $data);
-    $target_untung = $c0rz['ticker']['sell'] + ($c0rz['ticker']['sell'] * $win / 100);
-    $target_rugi = $c0rz['ticker']['sell'] - ($c0rz['ticker']['sell'] * $lose / 100);
-    $price_untung = number_format((int)$target_untung, 0, ',', '.');
-    $price_rugi = number_format((int)$target_rugi, 0, ',', '.');
-    if ($buy['success'] == TRUE) {
-        $ngantri = 1;
-        $infohis = [
-            'method' => 'orderHistory',
-            'timestamp' => '1578304294000',
-            'recvWindow' => '1578303937000',
-            'pair' => $coin . '_idr',
-            'count' => '1',
-            'from' => ''
-        ];
-        sleep(2);
-        while ($ngantri < 2) {
-            $pending = Indodax($key, $secretKey, $infohis);
-            if ($pending['return']['orders'][0]["status"] != "filled") {
-                echo "Dalam tahap membeli coin. [ORDER BOOK : " . $pending['return']['orders'][0]["order_id"] . "]\n";
-                sleep(3);
-            } else {
-                $ngantri = 99;
-            }
-        }
-        echo "Beli di Harga : " . number_format($last_price_bgt, 0, ',', '.') . " fee : " . $buy['return']['fee'] . " || Target Untung : Rp." . $price_untung . " || Target Rugi Rp." . $price_rugi . "\n";
-        $duit_lu_bersih = $dipakai - $fee;
-        while (True) {
-            $rate_now = get_rate($coin . "idr");
-            // $temp = ceil(($coin_didapat * $rate_now['ticker']['last'])) / $duit_lu_bersih;
-            // $temp = round($temp, 5);
-            $baru = number_format($rate_now['ticker']['last'], 0, ',', '.');
-            echo "Harga Saat ini : Rp.{$baru}\n";
-            echo "DELAY . . . .\n\n";
-            sleep(5);
-            if ($rate_now['ticker']['last'] >= $target_untung) {
-                $data = [
-                    'method' => 'getInfo',
-                    'timestamp' => '1578304294000',
-                    'recvWindow' => '1578303937000'
-                ];
-                $prof = Indodax($key, $secretKey, $data);
-                $coin_didapat = $prof["return"]["balance"][$coin];
-                $data = [
-                    'method' => 'trade',
-                    'timestamp' => '1578304294000',
-                    'recvWindow' => '1578303937000',
-                    'pair' => $coin . '_idr',
-                    'type' => 'sell',
-                    'price' => $rate_now['ticker']['last'],
-                    'idr' => '',
-                    $coin => $coin_didapat,
-                ];
-                $sell = Indodax($key, $secretKey, $data);
-                $ngantri = 1;
-                sleep(2);
-                while ($ngantri < 2) {
-                    $infohis = [
-                        'method' => 'orderHistory',
-                        'timestamp' => '1578304294000',
-                        'recvWindow' => '1578303937000',
-                        'pair' => $coin . '_idr',
-                        'count' => '1',
-                        'from' => ''
-                    ];
-                    $pending = Indodax($key, $secretKey, $infohis);
-                    if ($pending['return']['orders'][0]["status"] != "filled") {
-                        echo "Dalam tahap membeli coin. [ORDER BOOK : " . $pending['return']['orders'][0]["order_id"] . "]\n";
-                        sleep(3);
-                    } else {
-                        $ngantri = 99;
-                    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title id='Description'>Bitcoin Indonesia</title>
+    <link rel="stylesheet" href="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/styles/jqx.base.css" type="text/css" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />	
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/scripts/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxcore.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxdata.js"></script> 
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxbuttons.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxscrollbar.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxmenu.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxgrid.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxgrid.selection.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/jqwidgets/jqxtabs.js"></script>
+    <script type="text/javascript" src="https://www.jqwidgets.com/jquery-widgets-demo/scripts/demos.js"></script>
+</style>
+</head>
+<body class='default'>
+    <script type="text/javascript">
+    $(document).ready(function () {
+        showDataBtc();
+        showDataIdr();
+    });
+    
+    function showDataBtc(){
+        var source = {
+            dataType: "json",
+            dataFields: [
+                { name: 'id', type: 'string' },
+                { name: 'market', type: 'string' },
+                { name: 'prices', type: 'string' },
+                { name: 'change', type: 'string' },
+                { name: 'change_persen', type: 'float' },
+                { name: 'code',type: 'string'}
+                
+            ],
+            id: 'id',
+            url: "curlBtc.php",
+            cache:false
+        };
+        var cellsrenderer = function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                if (value < 0) {
+                    return '<span style="margin-top: 6px; margin-right: 4px; float: ' + columnproperties.cellsalign + '; color: #ff0000;">' + (columnfield=='change_persen'?Math.abs(value): Math.abs(value).toFixed(8)) + (columnfield=='change_persen'?'%':' BTC') + '</span>';
                 }
-                echo "PROFIT GUYS! \n\n";
-                exit();
-            } else if ($rate_now['ticker']['last'] <= $target_rugi) {
-                $data = [
-                    'method' => 'getInfo',
-                    'timestamp' => '1578304294000',
-                    'recvWindow' => '1578303937000'
-                ];
-                $prof = Indodax($key, $secretKey, $data);
-                $coin_didapat = $prof["return"]["balance"][$coin];
-                $data = [
-                    'method' => 'trade',
-                    'timestamp' => '1578304294000',
-                    'recvWindow' => '1578303937000',
-                    'pair' => $coin . '_idr',
-                    'type' => 'sell',
-                    'price' => $rate_now['ticker']['last'],
-                    'idr' => '',
-                    $coin => $coin_didapat,
-                ];
-                $sell = Indodax($key, $secretKey, $data);
-                $ngantri = 1;
-                sleep(2);
-                while ($ngantri < 2) {
-                    $infohis = [
-                        'method' => 'orderHistory',
-                        'timestamp' => '1578304294000',
-                        'recvWindow' => '1578303937000',
-                        'pair' => $coin . '_idr',
-                        'count' => '1',
-                        'from' => ''
-                    ];
-                    $pending = Indodax($key, $secretKey, $infohis);
-                    if ($pending['return']['orders'][0]["status"] != "filled") {
-                        echo "Dalam tahap membeli coin. [ORDER BOOK : " . $pending['return']['orders'][0]["order_id"] . "]\n";
-                        sleep(3);
-                    } else {
-                        $ngantri = 99;
-                    }
+                else {
+                    return '<span style="margin-top: 6px; margin-right: 4px; float: ' + columnproperties.cellsalign + '; color: #008000;">' + value + (columnfield=='change_persen'?'%':' BTC') + '</span>';
                 }
-                echo "LOSE SEMANGAT! \n\n";
-                exit();
             }
-        }
-    } else {
-        var_dump($buy);
+        var cellsrendererPrices = function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                return '<span style="margin-top: 6px; margin-right: 4px; float: ' + columnproperties.cellsalign + ';">' + value + ' BTC</span>';
+            }
+        var akses = function (row, column, value) {
+            if (value.indexOf('#') != -1) {
+                value = value.substring(0, value.indexOf('#'));
+            }   
+            var html = '<a title="Akses" id="btnakses" style="padding-left: 35%;" class ="btn btn-pencil" onclick="'+value+'">Detail</a>';    
+            return html;
+        };
+        var filterChanged = false;
+        var dataAdapter = new $.jqx.dataAdapter(source); 
+        
+        $("#jqxgridBtc").jqxGrid({
+            width: "50%",
+            autoheight: true,
+            source: dataAdapter,
+            columns: [
+              { text: 'Market', width:"20%", dataField: 'market', isdefault: true, cellsalign: 'left', align: 'center'},
+              { text: 'Last Prices', width:"30%", dataField: 'prices', cellsalign: 'right',  cellsrenderer: cellsrendererPrices, align: 'center'},
+              { text: 'Prices', width:"30%", columngroup: 'Changes', dataField: 'change', cellsrenderer: cellsrenderer, cellsalign: 'right', align: 'center', cellsformat: 'D' },
+              { text: '%', width:"20%", columngroup: 'Changes', dataField: 'change_persen', cellsrenderer: cellsrenderer, cellsalign: 'right', align: 'center'},
+            ],
+            columngroups: [
+                { text: 'Change', align: 'center', name: 'Changes' }
+            ]
+        });
+        $("#jqxgridBtc").on('rowselect', function (event) {
+            var market="";
+            if(event.args.row) market = event.args.row.id;
+            showDataDetail(market);
+        });
     }
-} else {
-    echo "Coin tidak ditemukan.";
-}
+    function showDataIdr(){
+        var source = {
+            dataType: "json",
+            dataFields: [
+                { name: 'id', type: 'string' },
+                { name: 'market', type: 'string' },
+                { name: 'prices', type: 'string' },
+                { name: 'change', type: 'string' },
+                { name: 'change_persen', type: 'float' },
+                { name: 'code',type: 'string'}
+                
+            ],
+            id: 'market',
+            url: "curlIdr.php",
+            cache:false
+        };
+        var cellsrenderer = function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                if (value < 0) {
+                    return '<span style="margin-top: 6px; margin-right: 4px; float: ' + columnproperties.cellsalign + '; color: #ff0000;">' + (columnfield=='change_persen'?(value*-1): formatNum(value*-1))  + (columnfield=='change_persen'?'%':' IDR') + '</span>';
+                }
+                else {
+                    return '<span style="margin-top: 6px; margin-right: 4px; float: ' + columnproperties.cellsalign + '; color: #008000;">' + (columnfield=='change_persen'?value:formatNum(value))  + (columnfield=='change_persen'?'%':' IDR') + '</span>';
+                }
+            }
+        var cellsrendererPrices = function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                return '<span style="margin-top: 6px; margin-right: 4px; float: ' + columnproperties.cellsalign + ';">' + formatNum(value) + ' IDR</span>';
+            }
+        var akses = function (row, column, value) {
+            if (value.indexOf('#') != -1) {
+                value = value.substring(0, value.indexOf('#'));
+            }   
+            var html = '<a title="Akses" id="btnakses" style="padding-left: 35%;" class ="btn btn-pencil" onclick="'+value+'">Detail</a>';    
+            return html;
+        };
+        var filterChanged = false;
+        var dataAdapter = new $.jqx.dataAdapter(source); 
+        
+        $("#jqxgridIdr").jqxGrid({
+            width: "50%",
+            autoheight: true,
+            source: dataAdapter,
+            columns: [
+              { text: 'Market', width:"20%", dataField: 'market', isdefault: true, cellsalign: 'left', align: 'center'},
+              { text: 'Last Prices', width:"30%", dataField: 'prices', cellsalign: 'right',  cellsrenderer: cellsrendererPrices, align: 'center'},
+              { text: 'Prices', width:"30%", columngroup: 'Changes', dataField: 'change', cellsrenderer: cellsrenderer, cellsalign: 'right', align: 'center'},
+              { text: '%', width:"20%", columngroup: 'Changes', dataField: 'change_persen', cellsrenderer: cellsrenderer, cellsalign: 'right', align: 'center'},
+            ],
+            columngroups: [
+                { text: 'Change', align: 'center', name: 'Changes' }
+            ]
+        });
+        $("#jqxgridIdr").on('rowselect', function (event) {
+            var market="";
+            if(event.args.row) market = event.args.row.id;
+            showDataDetail(market);
+        });
+    }
+    function showDataDetail(market){
+        console.log(market);
+    }
+    function formatNum(rawNum) {
+        rawNum = "" + rawNum; // converts the given number back to a string
+        var retNum = "";
+        var j = 0;
+        for (var i = rawNum.length; i > 0; i--) {
+            j++;
+            if (((j % 3) == 1) && (j != 1))
+                retNum = rawNum.substr(i - 1, 1) + "." + retNum;
+            else
+                retNum = rawNum.substr(i - 1, 1) + retNum;
+        }
+        return retNum;
+    }
+    function showClearBtc(){
+        $("#jqxgridBtc").jqxGrid('updatebounddata', 'refresh');
+    }
+    function showClearIdr(){
+        $("#jqxgridIdr").jqxGrid('updatebounddata', 'refresh');
+    }
+    setInterval(function(){ 
+        showClearIdr();
+        showClearBtc();
+    }, (6000) );
+    
+</script>
+    <table>
+        <tr>
+            <td valign="top"><div id="jqxgridBtc"></div></td>
+            <td valign="top"><div id="jqxgridIdr"></div></td>
+        </tr>
+    </table>
+</body>
+</html>
