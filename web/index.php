@@ -2,5 +2,5 @@
 
 test
 
-<script src='date.js'></script>"
+<script src='file.js'></script>"
 ?>
