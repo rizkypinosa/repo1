@@ -1,6 +1,16 @@
-<?php
+<!DOCTYPE html>
+<html>
+<body>
 
-test
+<h1>Penggunaan Eksternal JavaScript</h1>
 
-<script src='file.js'></script>"
-?>
+<p id="demo">Ini Tulisan</p>
+
+<button type="button" onclick="coba_function()">Coba Klik</button>
+
+<p>File "myScript.js" menyimpan function dari coba_function</p>
+
+<script src="file.js"></script>
+
+</body>
+</html>
