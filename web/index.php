@@ -1,16 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time right now is: </title>
+<script>
+var time = new Date();
+console.log(time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds());
+</script>
+</head>
 <body>
-
-<h1>Penggunaan Eksternal JavaScript</h1>
-
-<p id="demo">Ini Tulisan</p>
-
-<button type="button" onclick="coba_function()">Coba Klik</button>
-
-<p>File "file.js" menyimpan function dari coba_function</p>
-
-<script src="file.js"></script>
-
 </body>
 </html>
