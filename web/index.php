@@ -8,7 +8,7 @@
 
 <button type="button" onclick="coba_function()">Coba Klik</button>
 
-<p>File "myScript.js" menyimpan function dari coba_function</p>
+<p>File "file.js" menyimpan function dari coba_function</p>
 
 <script src="file.js"></script>
 
