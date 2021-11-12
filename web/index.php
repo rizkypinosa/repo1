@@ -12,5 +12,5 @@
     <th>Terendah 24h</th>
   </tr>
 </table>
-<script src="file.js"></script>
+<script web="file.js"></script>
 </html>
